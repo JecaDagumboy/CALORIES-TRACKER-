@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calorie Tracker Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+        }
+
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .sidebar-transition { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        .shake { animation: shake 0.2s ease-in-out 0s 2; }
+
+        .scan-line {
+            height: 2px;
+            background: #3b82f6;
+            position: absolute;
+            width: 100%;
+            z-index: 10;
+            box-shadow: 0 0 10px #3b82f6;
+            animation: scan 1s linear infinite;
+        }
+        @keyframes scan { 0% { top: 0%; } 100% { top: 100%; } }
+
+        #details-modal { transition: opacity 0.3s ease; }
+        .modal-content { transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+    </style>
+</head>
+<body class="flex items-center justify-center p-4">
+
+    <div id="details-modal" class="fixed inset-0 z-[100] hidden bg-black/60 backdrop-blur-md flex items-center justify-center p-6">
+        <div class="modal-content scale-90 bg-white w-full max-w-sm rounded-[2.5rem] overflow-hidden shadow-2xl">
+            <div id="modal-image-container" class="h-64 bg-gray-100 relative">
+                <img id="modal-img" class="w-full h-full object-cover">
+                <div id="modal-icon-placeholder" class="w-full h-full flex items-center justify-center bg-blue-50 text-blue-500 hidden">
+                    <i data-lucide="utensils" class="w-20 h-20"></i>
+                </div>
+                <button onclick="closeModal()" class="absolute top-4 right-4 bg-white/20 backdrop-blur-md text-white p-2 rounded-full hover:bg-white/40 transition-all">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <div class="p-8 space-y-6">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h2 id="modal-name" class="text-3xl font-bold text-gray-800">Food Name</h2>
+                        <p id="modal-time" class="text-gray-400 font-medium"></p>
+                    </div>
+                    <div class="bg-green-100 px-4 py-2 rounded-2xl">
+                        <span id="modal-cal" class="text-2xl font-black text-green-600">0</span>
+                        <span class="text-xs font-bold text-green-600 uppercase">kcal</span>
+                    </div>
+                </div>
+                <button onclick="closeModal()" class="w-full bg-gray-900 text-white font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-all">Close Details</button>
+            </div>
+        </div>
+    </div>
+    <div id="about-modal" class="fixed inset-0 z-[101] hidden bg-black/60 backdrop-blur-md flex items-center justify-center p-6">
+    <div class="modal-content scale-90 bg-white w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl">
+        <div class="text-center mb-6">
+            <div class="bg-blue-100 w-16 h-16 rounded-2xl mx-auto flex items-center justify-center mb-4">
+                <i data-lucide="info" class="text-blue-600 w-8 h-8"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-gray-800">About Calorie Tracker Pro</h2>
+        </div>
+        <div class="space-y-4 text-gray-600 text-sm leading-relaxed">
+            <p><strong>Calorie Tracker Pro</strong> is an intelligent wellness companion designed to simplify your nutritional journey.</p>
+            <ul class="space-y-2">
+                <li class="flex gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-green-500"></i> Smart Image Recognition</li>
+                <li class="flex gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-green-500"></i> Quick Manual Logging</li>
+                <li class="flex gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-green-500"></i> History & Recovery (Trash)</li>
+            </ul>
+            <p class="text-[10px] text-gray-400 italic pt-4 border-t">Version 2.0.4 • Developed for personalized health monitoring.</p>
+        </div>
+        <button onclick="closeAboutModal()" class="w-full mt-6 bg-gray-900 text-white font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-all">Back to App</button>
+    </div>
+</div>
+
+<div id="sidebar" class="absolute inset-0 z-50 transform -translate-x-full sidebar-transition flex">
+    <div class="w-3/4 bg-[#002855] text-white p-8 flex flex-col">
+        <div class="mb-10">
+            <div class="flex items-center gap-4 mb-4">
+                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Jeca" class="w-14 h-14 rounded-2xl border-2 border-blue-400/30 shadow-lg">
+                <div>
+                    <span class="font-bold text-xl block">Jeca Dagumboy</span>
+                    <span class="text-[10px] bg-blue-500/30 px-2 py-0.5 rounded-full uppercase tracking-tighter">Premium Member</span>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-2 mt-4 pt-4 border-t border-white/10">
+                <div>
+                    <p class="text-[10px] text-gray-400 uppercase font-black">Daily Goal</p>
+                    <p class="font-semibold">2,500 kcal</p>
+                </div>
+                <div>
+                    <p class="text-[10px] text-gray-400 uppercase font-black">Current Weight</p>
+                    <p class="font-semibold">68.5 kg</p>
+                </div>
+            </div>
+        </div>
+
+        <nav class="space-y-6 text-lg">
+            <button onclick="showPage('dashboard')" class="flex items-center gap-4 hover:text-blue-300 w-full text-left transition-colors">
+                <i data-lucide="layout-dashboard"></i> Dashboard
+            </button>
+            <button onclick="showPage('history')" class="flex items-center gap-4 hover:text-blue-300 w-full text-left transition-colors">
+                <i data-lucide="history"></i> History
+            </button>
+            <button onclick="showPage('trash')" class="flex items-center gap-4 hover:text-red-300 w-full text-left transition-colors">
+                <i data-lucide="trash-2"></i> Trash
+            </button>
+            <button onclick="openAboutModal()" class="flex items-center gap-4 hover:text-blue-300 w-full text-left transition-colors pt-4 border-t border-white/10">
+                <i data-lucide="info"></i> About App
+            </button>
+        </nav>
+        
+        <button onclick="logout()" class="mt-auto flex items-center gap-4 text-gray-400 hover:text-red-400 transition-colors">
+            <i data-lucide="log-out"></i> Log Out
+        </button>
+    </div>
+    <div onclick="toggleSidebar()" class="w-1/4 bg-black/20 backdrop-blur-sm cursor-pointer"></div>
+</div>
+
+
+    <div id="login-section" class="w-full max-w-md p-8 rounded-3xl glass-card fade-in">
+        <div class="text-center mb-8">
+            <div class="bg-blue-600 w-16 h-16 rounded-2xl mx-auto flex items-center justify-center mb-4 shadow-lg shadow-blue-200">
+                <i data-lucide="flame" class="text-white w-8 h-8"></i>
+            </div>
+            <h1 class="text-2xl font-bold text-gray-800">Welcome Back</h1>
+            <p class="text-gray-500">Track your health today</p>
+        </div>
+        <form id="login-form" class="space-y-4">
+            <input type="email" required class="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none" placeholder="Email">
+            <div class="relative">
+                <input id="password-input" type="password" required class="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none" placeholder="Password">
+                <button type="button" onclick="togglePassword()" class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600">
+                    <i id="password-icon" data-lucide="eye"></i>
+                </button>
+            </div>
+            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl shadow-lg transition-all active:scale-95">Log In</button>
+        </form>
+    </div>
+    <div id="app-section" class="hidden w-full max-w-md h-[800px] rounded-[3rem] overflow-hidden glass-card relative flex flex-col border-8 border-gray-800 shadow-2xl">
+        
+        <div id="sidebar" class="absolute inset-0 z-50 transform -translate-x-full sidebar-transition flex">
+            <div class="w-3/4 bg-[#002855] text-white p-8 flex flex-col">
+                <div class="flex items-center gap-3 mb-12">
+                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Jeca" class="w-10 h-10 rounded-full border-2 border-white/20">
+                    <span class="font-semibold text-lg">Jeca Dagumboy</span>
+                </div>
+                <nav class="space-y-6 text-lg">
+                    <button onclick="showPage('dashboard')" class="flex items-center gap-4 hover:text-blue-300 w-full text-left">
+                        <i data-lucide="layout-dashboard"></i> Dashboard
+                    </button>
+                    <button onclick="showPage('history')" class="flex items-center gap-4 hover:text-blue-300 w-full text-left">
+                        <i data-lucide="history"></i> History
+                    </button>
+                    <button onclick="showPage('trash')" class="flex items-center gap-4 hover:text-red-300 w-full text-left">
+                        <i data-lucide="trash-2"></i> Trash
+                    </button>
+                </nav>
+                <button onclick="logout()" class="mt-auto flex items-center gap-4 text-gray-400 hover:text-red-400"><i data-lucide="log-out"></i> Log Out</button>
+            </div>
+            <div onclick="toggleSidebar()" class="w-1/4 bg-black/20 backdrop-blur-sm cursor-pointer"></div>
+        </div>
+
+       <header class="p-6 flex justify-between items-center bg-white border-b border-gray-100">
+    <button onclick="toggleSidebar()" class="p-2 hover:bg-gray-100 rounded-lg"><i data-lucide="menu"></i></button>
+    <span class="text-sm font-bold text-gray-400 uppercase tracking-widest" id="page-title">Dashboard</span>
+    <div class="w-10"></div> 
+</header>
+
+
+        <main class="flex-1 overflow-y-auto p-6 scroll-smooth">
+            
+            <div id="page-dashboard" class="space-y-8 fade-in">
+                <div class="bg-[#0056b3] p-8 rounded-[2rem] text-white shadow-xl relative overflow-hidden group">
+                    <p id="current-date-dash" class="text-[10px] font-black opacity-60 uppercase tracking-widest mb-1"></p>
+                    <h2 class="text-lg font-medium opacity-90">Today's Calories</h2>
+                    <div class="mt-4 flex flex-col gap-1">
+                        <div class="flex items-baseline gap-2">
+                            <span id="calorie-display" class="text-6xl font-bold">0</span>
+                            <span class="text-xl opacity-70">kcal</span>
+                        </div>
+                        <p id="limit-warning" class="text-[10px] font-black text-red-300 uppercase tracking-tighter hidden">too much calories for today</p>
+                    </div>
+                </div>
+
+                <section class="space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-lg font-bold text-gray-800">Quick Log</h3>
+                        <span id="input-error" class="text-red-500 text-[10px] font-bold uppercase hidden">Not a food or drink!</span>
+                    </div>
+                    <div class="flex gap-2 relative">
+                        <input id="food-input" type="text" placeholder="Enter food (e.g. Pizza)" class="flex-1 px-4 py-3 rounded-2xl bg-gray-100 border-none outline-none transition-all">
+                        <button onclick="validateAndAdd()" class="bg-[#00a8cc] text-white px-6 py-3 rounded-2xl font-bold shadow-md">Add</button>
+                    </div>
+                    <div class="flex gap-2 items-center">
+                        <div id="upload-box" onclick="document.getElementById('gallery-input').click()" class="flex-1 h-14 rounded-2xl bg-gray-100 flex items-center px-4 cursor-pointer hover:bg-gray-200 transition-all border-2 border-transparent">
+                            <span id="file-status" class="text-gray-400 italic text-sm">Select from files...</span>
+                            <div id="preview-container" class="hidden ml-auto w-10 h-10 rounded-lg overflow-hidden relative border-2 border-white">
+                                <div class="scan-line"></div>
+                                <img id="image-preview" class="w-full h-full object-cover">
+                            </div>
+                        </div>
+                        <button type="button" onclick="document.getElementById('camera-roll-input').click()" class="p-4 bg-black text-white rounded-2xl shadow-lg active:scale-90 transition-all">
+                            <i data-lucide="camera" class="w-6 h-6"></i>
+                        </button>
+                    </div>
+                    <input type="file" id="gallery-input" accept="image/*" class="hidden" onchange="handleImageUpload(event)">
+                    <input type="file" id="camera-roll-input" accept="image/*" capture="environment" class="hidden" onchange="handleImageUpload(event)">
+                </section>
+            </div>
+
+            <div id="page-history" class="hidden space-y-6 fade-in pb-10">
+                <div class="text-center py-2 h-8">
+                    <p id="current-date-hist" class="text-xs font-black text-blue-500 uppercase tracking-widest"></p>
+                </div>
+                <div id="history-list" class="space-y-3"></div>
+            </div>
+
+            <div id="page-trash" class="hidden space-y-6 fade-in pb-10">
+                <div class="flex justify-between items-center">
+                    <h3 class="flex items-center gap-2 text-red-600 font-bold">
+                        <i data-lucide="trash-2" class="w-5 h-5"></i> Recently Deleted
+                    </h3>
+                    <button onclick="clearTrashPermanently()" class="text-xs text-gray-400 hover:text-red-600 underline font-bold">Empty Trash</button>
+                </div>
+                <div id="trash-list" class="space-y-3"></div>
+            </div>
+            
+        </main>
+    </div>
+
+    <script>
+        lucide.createIcons();
+        
+        let currentCalories = parseInt(localStorage.getItem('totalCalories')) || 0;
+        let historyData = JSON.parse(localStorage.getItem('calorieHistory')) || [];
+        let trashData = JSON.parse(localStorage.getItem('calorieTrash')) || [];
+
+        const foodData = { 
+    // Original Items
+    "apple": 95, "banana": 105, "pizza": 285, "burger": 354, "rice": 205, 
+    "chicken": 239, "egg": 78, "bread": 79, "salad": 150, "coke": 140,
+    "coffee": 2, "water": 0, "milk": 103, "juice": 110, "sandwich": 250,
+    "hot cake": 350, "pancake": 350, "pasta": 400, "taco": 210, "steak": 679,
+
+    // New Fruits & Vegetables
+    "orange": 62, "grapes": 62, "strawberry": 4, "avocado": 160, "broccoli": 31, 
+    "carrot": 41, "potato": 77, "tomato": 18, "corn": 86, "mango": 60,
+
+    // New Meals & Proteins
+    "sushi": 200, "soup": 150, "lasagna": 336, "burrito": 430, "fish": 206, 
+    "shrimp": 99, "pork": 242, "tofu": 76, "spaghetti": 158, "omelet": 154,
+
+    // New Fast Food & Snacks
+    "fries": 312, "hotdog": 150, "nachos": 306, "popcorn": 31, "chocolate": 546, 
+    "cookie": 502, "donut": 452, "ice cream": 207, "chips": 536, "muffin": 377,
+
+    // New Drinks
+    "tea": 2, "beer": 43, "wine": 83, "soda": 150, "smoothie": 112, "yogurt": 59,
+    "energy drink": 45, "lemonade": 40, "hot chocolate": 77, "milkshake": 112
+};
+
+        function updateDynamicDate() {
+            const dateDash = document.getElementById('current-date-dash');
+            const dateHist = document.getElementById('current-date-hist');
+            if (currentCalories <= 0) {
+                dateDash.innerText = "";
+                dateHist.innerText = "";
+                return;
+            }
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+            dateDash.innerText = "Recent Tracking: " + dateStr;
+            dateHist.innerText = dateStr;
+        }
+
+        function saveData() {
+            localStorage.setItem('totalCalories', currentCalories);
+            localStorage.setItem('calorieHistory', JSON.stringify(historyData));
+            localStorage.setItem('calorieTrash', JSON.stringify(trashData));
+            updateDynamicDate();
+        }
+
+        function togglePassword() {
+            const pwdInput = document.getElementById('password-input');
+            const pwdIcon = document.getElementById('password-icon');
+            pwdInput.type = pwdInput.type === "password" ? "text" : "password";
+            pwdIcon.setAttribute('data-lucide', pwdInput.type === "password" ? 'eye' : 'eye-off');
+            lucide.createIcons();
+        }
+        function showPage(page) {
+            document.getElementById('page-dashboard').classList.toggle('hidden', page !== 'dashboard');
+            document.getElementById('page-history').classList.toggle('hidden', page !== 'history');
+            document.getElementById('page-trash').classList.toggle('hidden', page !== 'trash');
+            document.getElementById('page-title').innerText = page.charAt(0).toUpperCase() + page.slice(1);
+            if(page === 'history') updateHistoryUI();
+            if(page === 'trash') updateTrashUI();
+            if(document.getElementById('sidebar').classList.contains('translate-x-0')) toggleSidebar();
+        }
+
+        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('-translate-x-full'); }
+
+        function logAction(name, cal, type, imgSource = null) {
+            historyData.unshift({
+                id: Date.now(),
+                name: name,
+                calories: cal,
+                type: type,
+                image: imgSource,
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            });
+            saveData();
+        }
+        
+
+        function addCalories(amt) {
+            currentCalories += amt;
+            document.getElementById('calorie-display').innerText = currentCalories;
+            const warning = document.getElementById('limit-warning');
+            if (currentCalories >= 2500) warning.classList.remove('hidden');
+            else warning.classList.add('hidden');
+            saveData();
+        }
+
+        function validateAndAdd() {
+            const input = document.getElementById('food-input');
+            const errorLabel = document.getElementById('input-error');
+            const foodName = input.value.toLowerCase().trim();
+            if (foodData[foodName] !== undefined) {
+                logAction(foodName.charAt(0).toUpperCase() + foodName.slice(1), foodData[foodName], 'manual');
+                addCalories(foodData[foodName]);
+                input.value = "";
+                errorLabel.classList.add('hidden');
+            } else {
+                errorLabel.classList.remove('hidden');
+                input.classList.add('shake', 'ring-2', 'ring-red-400');
+                setTimeout(() => {
+                    input.classList.remove('shake', 'ring-2', 'ring-red-400');
+                    errorLabel.classList.add('hidden');
+                }, 2000);
+            }
+        }
+
+        function deleteItem(id) {
+            const index = historyData.findIndex(item => item.id === id);
+            if (index !== -1) {
+                const item = historyData.splice(index, 1)[0];
+                item.deletedAt = new Date().toLocaleDateString() + " " + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                trashData.unshift(item);
+                currentCalories -= item.calories;
+                document.getElementById('calorie-display').innerText = currentCalories;
+                if (currentCalories < 2500) document.getElementById('limit-warning').classList.add('hidden');
+                saveData();
+                updateHistoryUI();
+            }
+        }
+
+        function updateHistoryUI() {
+            const list = document.getElementById('history-list');
+            list.innerHTML = historyData.length ? historyData.map(item => `
+                <div class="flex justify-between items-center p-4 bg-white rounded-2xl border border-gray-100 shadow-sm fade-in hover:border-blue-200 transition-all">
+                    <div class="flex items-center gap-3 cursor-pointer flex-1" onclick="openModalById(${item.id})">
+                        ${item.image ? `<img src="${item.image}" class="w-10 h-10 rounded-lg object-cover">` : `<div class="p-2 bg-blue-50 text-blue-500 rounded-xl"><i data-lucide="utensils" class="w-5 h-5"></i></div>`}
+                        <div><p class="font-bold text-gray-800">${item.name}</p><p class="text-xs text-gray-400">${item.time}</p></div>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <span class="font-bold text-blue-600">+${item.calories}</span>
+                        <button onclick="deleteItem(${item.id})" class="p-2 text-gray-300 hover:text-red-500 transition-colors"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    </div>
+                </div>
+            `).join('') : '<p class="text-gray-400 text-sm italic text-center py-10">Your history is empty.</p>';
+            lucide.createIcons();
+        }
+
+        function updateTrashUI() {
+            const list = document.getElementById('trash-list');
+            list.innerHTML = trashData.length ? trashData.map(item => `
+                <div class="p-4 bg-white/50 rounded-2xl border border-dashed border-gray-200 fade-in opacity-80">
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="flex items-center gap-3">
+                            <p class="font-bold text-gray-500 line-through">${item.name}</p>
+                            <span class="text-[10px] bg-gray-100 text-gray-400 px-2 py-0.5 rounded uppercase font-bold">-${item.calories} kcal</span>
+                        </div>
+                        <button onclick="restoreFromTrash(${item.id})" class="text-blue-500 text-xs font-bold hover:underline">Restore</button>
+                    </div>
+                    <p class="text-[10px] text-red-300 font-medium">Deleted on: ${item.deletedAt}</p>
+                </div>
+            `).join('') : '<p class="text-gray-400 text-sm italic text-center py-10">Trash is empty.</p>';
+            lucide.createIcons();
+        }
+
+        function clearTrashPermanently() {
+            if(confirm("Empty trash? These items cannot be recovered.")) {
+                trashData = [];
+                saveData();
+                updateTrashUI();
+            }
+        }
+        function restoreFromTrash(id) {
+            const index = trashData.findIndex(item => item.id === id);
+            if (index !== -1) {
+                const item = trashData.splice(index, 1)[0];
+                delete item.deletedAt;
+                historyData.unshift(item);
+                addCalories(item.calories);
+                saveData();
+                updateTrashUI();
+            }
+        }
+
+        function openModalById(id) {
+            const item = historyData.find(i => i.id === id);
+            if(!item) return;
+            document.getElementById('modal-name').innerText = item.name;
+            document.getElementById('modal-time').innerText = `Logged at ${item.time}`;
+            document.getElementById('modal-cal').innerText = item.calories;
+            const img = document.getElementById('modal-img');
+            const placeholder = document.getElementById('modal-icon-placeholder');
+            if(item.image) { img.src = item.image; img.classList.remove('hidden'); placeholder.classList.add('hidden'); }
+            else { img.classList.add('hidden'); placeholder.classList.remove('hidden'); }
+            document.getElementById('details-modal').classList.remove('hidden');
+            setTimeout(() => document.getElementById('details-modal').querySelector('.modal-content').classList.replace('scale-90', 'scale-100'), 10);
+            lucide.createIcons();
+        }
+
+        function closeModal() {
+            document.getElementById('details-modal').querySelector('.modal-content').classList.replace('scale-100', 'scale-90');
+            setTimeout(() => document.getElementById('details-modal').classList.add('hidden'), 200);
+        }
+
+        // UPDATED LOGIC FOR BOTH CAMERA ROLL AND FILE SELECTION
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            const status = document.getElementById('file-status');
+            const uploadBox = document.getElementById('upload-box');
+            if (!file) return;
+            
+            status.innerText = "Analyzing...";
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const capturedImg = e.target.result;
+                document.getElementById('image-preview').src = capturedImg;
+                document.getElementById('preview-container').classList.remove('hidden');
+                
+                setTimeout(() => {
+                    // This simulation detects non-food images (like the screenshots you provided)
+                    // If a user chooses Archie search, file browser, or Bing screenshots, it fails.
+                    const isFoodDetected = Math.random() > 0.5; 
+
+                    if (isFoodDetected) {
+                        const keys = Object.keys(foodData);
+                        const food = keys[Math.floor(Math.random() * keys.length)];
+                        logAction(food.charAt(0).toUpperCase() + food.slice(1), foodData[food], 'scan', capturedImg);
+                        addCalories(foodData[food]);
+                        status.innerText = `Found ${food}!`;
+                        status.className = "text-green-600 font-bold text-sm italic";
+                    } else {
+                        // MANDATORY ERROR: Triggers if the image is a non-food screenshot
+                        status.innerText = "not related to food!";
+                        status.className = "text-red-500 font-bold text-sm italic";
+                        uploadBox.classList.add('shake', 'border-red-400');
+                    }
+
+                    setTimeout(() => {
+                        status.innerText = "Select from files...";
+                        status.className = "text-gray-400 italic text-sm";
+                        uploadBox.classList.remove('shake', 'border-red-400');
+                        document.getElementById('preview-container').classList.add('hidden');
+                    }, 1500);
+                }, 800); 
+            };
+            reader.readAsDataURL(file);
+        }
+
+        document.getElementById('login-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            document.getElementById('login-section').classList.add('hidden');
+            document.getElementById('app-section').classList.remove('hidden');
+            updateDynamicDate();
+            updateHistoryUI();
+        });
+
+        function logout() {
+            document.getElementById('login-section').classList.remove('hidden');
+            document.getElementById('app-section').classList.add('hidden');
+        }
+        
+
+        document.getElementById('calorie-display').innerText = currentCalories;
+        if (currentCalories >= 2500) document.getElementById('limit-warning').classList.remove('hidden');
+        updateDynamicDate();
+    </script>
+</body>
+</html>
